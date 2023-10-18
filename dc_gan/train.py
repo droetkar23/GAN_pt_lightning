@@ -22,12 +22,28 @@ if __name__ == "__main__":
         # profiler="simple",
         **trainer_parameters
     )
+
     with trainer.init_module():
         # lightning initializes model on cpu but
         # we have some tensors in init that we want on the gpu
         model = DCGanCelebA(**model_parameters)
 
-    model.custom_weight_init()
+        model.custom_weight_init()
+
+    N, in_channels, H, W = 8, model.hparams.channels_image, 64, 64
+    noise_dim = model.hparams.z_dim
+    x = torch.randn((N, in_channels, H, W), device="cuda")
+    # print(f"{x.device=}")
+    # print(f"{torch.current_device()}")
+    # quit()
+    # disc = Discriminator(in_channels, 8)
+    assert model.disc(x).shape == (N, 1, 1, 1), "Discriminator test failed"
+    # gen = Generator(noise_dim, in_channels, 8)
+    z = torch.randn((N, noise_dim, 1, 1), device="cuda")
+    assert model.gen(z).shape == (N, in_channels, H, W), "Generator test failed"
+    print("Success, tests passed!")
+    # model.test()
+
 
     dm = plDataModule(**dataset_parameters)
     trainer.fit(model, dm)

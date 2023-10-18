@@ -31,11 +31,11 @@ class Discriminator(nn.Sequential):
     def __init__(self, channels_image, features_d, kernel_size=4, stride=2, padding=1):
         super().__init__(
             # input: (N x channels_img x 64 x 64)
-            ConvBlock(channels_image, features_d, kernel_size, stride, padding),    # 32x32
-            ConvBlock(features_d, features_d*2, kernel_size, stride, padding),      # 16x16
-            ConvBlock(features_d*2, features_d*4, kernel_size, stride, padding),    # 8x8
-            ConvBlock(features_d*4, features_d*8, kernel_size, stride, padding),    # 4x4
-            nn.Conv2d(features_d*8,1,kernel_size, stride, padding=0),                # 1x1
+            ConvBlock(channels_image, features_d, kernel_size, stride, padding, use_bn=False),  # 32x32
+            ConvBlock(features_d, features_d*2, kernel_size, stride, padding),                  # 16x16
+            ConvBlock(features_d*2, features_d*4, kernel_size, stride, padding),                # 8x8
+            ConvBlock(features_d*4, features_d*8, kernel_size, stride, padding),                # 4x4
+            nn.Conv2d(features_d*8, 1, kernel_size, stride, padding=0),                           # 1x1
             nn.Sigmoid()
         )
 

@@ -16,15 +16,17 @@ from torch.utils.data import DataLoader, random_split
 
 
 class plDataModule(pl.LightningDataModule):
-    def __init__(self, data_dir, batch_size, num_workers, resize_to=64, channels_image=1) -> None:
+    def __init__(self, data_dir, batch_size, split=[0.8, 0.2, 0.0], num_workers=0, resize_to=64, channels_image=1) -> None:
         super().__init__()
         self.data_dir = data_dir
         self.batch_size = batch_size
         self.num_workers = num_workers
+        self.split = split
 
         self.transforms = transforms.Compose(
             [
                 transforms.Resize(resize_to),
+                transforms.CenterCrop(resize_to),
                 transforms.ToTensor(),
                 transforms.Normalize(
                     [0.5 for _ in range(channels_image)], [0.5 for _ in range(channels_image)]
@@ -57,7 +59,7 @@ class plDataModule(pl.LightningDataModule):
         # )
 
         ds = datasets.CelebA(root=self.data_dir, transform=self.transforms)
-        self. train_ds, self.val_ds, self.test_ds = random_split(ds, [0.8, 0.2, 0.0])
+        self.train_ds, self.val_ds, self.test_ds = random_split(ds, self.split)
 
     def train_dataloader(self) -> TRAIN_DATALOADERS:
         return DataLoader(

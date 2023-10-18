@@ -27,13 +27,29 @@ class DCGanCelebA(pl.LightningModule):
         # defining self.example_input_array will add the
         # computational graph to the logger automatically
         self.example_input_array = torch.zeros(1, z_dim, 1, 1)
-
+        # print(f"{self.device=}")
+        # print(f"{self.disc.device=}")
+        # print(f"{self.gen.device=}")
+        
 
     def custom_weight_init(self):
     # Initializes weights according to the DCGAN paper
         for m in self.modules():
             if isinstance(m, (nn.Conv2d, nn.ConvTranspose2d, nn.BatchNorm2d)):
                 nn.init.normal_(m.weight.data, 0.0, 0.02)
+
+    def test(self):
+        N, in_channels, H, W = 8, self.hparams.channels_image, 64, 64
+        noise_dim = self.hparams.z_dim
+        x = torch.randn((N, in_channels, H, W), device=self.device)
+        print(f"{self.device=}")
+        print(f"{x.device=}")
+        # disc = self.disc(in_channels, 8)
+        assert self.disc(x).shape == (N, 1, 1, 1), "Discriminator test failed"
+        # gen = self.gen(noise_dim, in_channels, 8)
+        z = torch.randn((N, noise_dim, 1, 1), device=self.device)
+        assert self.gen(z).shape == (N, in_channels, H, W), "Generator test failed"
+        print("Success, tests passed!")
 
 
 
@@ -51,22 +67,21 @@ class DCGanCelebA(pl.LightningModule):
         ### Train Discriminator: max log(D(x)) + log(1 - D(G(z)))
         #generate noise for generator
         noise = torch.randn((real_img.shape[0], self.z_dim, 1, 1), device=self.device)
-        # noise = noise.type_as(real_img)
         #generate images from it
         fake_img = self.gen(noise)
-        # log sampled images
-        # sample_fakes = fake[:32]
-        # grid = torchvision.utils.make_grid(sample_fakes)
-        # self.logger.experiment.add_image("generated_images", grid, 0)
+
         # discriminator loss from real and fake image
         disc_real = self.disc(real_img).view(-1)
         lossD_real = self.criterion(disc_real, torch.ones_like(disc_real))
+
         disc_fake = self.disc(fake_img).view(-1)
         lossD_fake = self.criterion(disc_fake, torch.zeros_like(disc_fake))
+
         lossD = (lossD_real + lossD_fake) / 2
         self.log("lossD", lossD, prog_bar=True)
-        self.disc.zero_grad()
-        lossD.backward(retain_graph=True)   # keep 
+
+        opt_disc.zero_grad()
+        self.manual_backward(lossD, retain_graph=True)   # keep 
         opt_disc.step()
 
         ### Train Generator: min log(1 - D(G(z))) <-> max log(D(G(z))
@@ -75,22 +90,24 @@ class DCGanCelebA(pl.LightningModule):
         output = self.disc(fake_img).view(-1)
         lossG = self.criterion(output, torch.ones_like(output))
         self.log("lossG", lossG, prog_bar=True)
-        self.gen.zero_grad()
-        lossG.backward()
+        
+        opt_gen.zero_grad()
+        self.manual_backward(lossG)
         opt_gen.step()
 
     def on_validation_epoch_end(self):
-        # z = self.fixed_noise.type_as(self.example_input_array)
-        # print(z.device)
-
         # log sampled images
         sample_imgs = self(self.fixed_noise)
         grid = torchvision.utils.make_grid(sample_imgs)
         self.logger.experiment.add_image("generated_images", grid, self.current_epoch)
+        grid = torchvision.utils.make_grid(self.real_image_sample)
+        self.logger.experiment.add_image("real_images", grid, self.current_epoch)
         
 
-    def validation_step(self, *args: Any, **kwargs: Any) -> STEP_OUTPUT | None:
-        # implement validation step
+    def validation_step(self, batch, batch_idx) -> STEP_OUTPUT | None:
+        real_img, _ = batch
+        if batch_idx==0:
+            self.real_image_sample = real_img[:self.fixed_noise.shape[0]]
         pass
         
     def test_step(self, *args: Any, **kwargs: Any) -> STEP_OUTPUT | None:

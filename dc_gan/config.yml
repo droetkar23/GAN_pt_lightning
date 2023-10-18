@@ -12,6 +12,7 @@ dataset_parameters:
   num_workers: 3
   resize_to: 64
   channels_image: 3
+  split: [0.9,0.1,0.0]
 
 trainer_parameters:
   max_epochs: 10
