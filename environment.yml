@@ -1,0 +1,17 @@
+name: GAN_ptl
+channels:
+  - pytorch
+  - nvidia
+  - defaults
+dependencies:
+  - ipykernel
+  - numpy
+  - pytorch
+  - torchvision
+  - pytorch-cuda=12.1
+  - torchmetrics
+  - lightning
+  - pytorch-lightning
+  - tensorboard
+  - tensorboardX
+prefix: C:\Users\Oskar\miniforge3\envs\GAN_ptl

@@ -1,0 +1,14 @@
+hyperparameters:
+  input_size: 784
+  num_classes: 10
+  learning_rate: 0.001
+  batch_size: 64
+  num_epochs: 3
+
+dataset_parameters:
+  data_dir: "dataset/"
+  num_workers: 3
+
+cumpute_parameters:
+  accelerator: gpu
+  devices: [0]

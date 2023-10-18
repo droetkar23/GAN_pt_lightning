@@ -1,0 +1,14 @@
+model_parameters:
+  img_dim: 784
+  z_dim: 64
+  learning_rate: 1.0e-4
+
+dataset_parameters:
+  batch_size: 64
+  data_dir: "dataset/"
+  num_workers: 0
+
+trainer_parameters:
+  max_epochs: 50
+  accelerator: gpu
+  devices: [0]
