@@ -1,17 +1,20 @@
 import pytorch_lightning as pl
 from pytorch_lightning.utilities.types import EVAL_DATALOADERS, TRAIN_DATALOADERS
 from torchvision import datasets, transforms
-from torch.utils.data import DataLoader, random_split
+from torch.utils.data import DataLoader, random_split, Dataset
 
 
 
 # # custom dataset
-# class CustomDataset():
-#     # init
+class CustomDataset(Dataset):
+    def __init__(self):
+        pass
 
-#     # len
+    def __len__(self):
+        pass
 
-#     # getitem
+    def __getitem__(self):
+        pass
 
 
 
