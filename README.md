@@ -13,7 +13,7 @@ PS C:\Users\usr\projects\GAN_ptl_lightning> conda activate
 ```
 On Windows use the Miniforge Prompt or initialize your prompt of choice, eg. powershell with
 \(see https://docs.conda.io/projects/conda/en/latest/commands/init.html\).
-```
+```ps
 (base) PS C:\Users\usr> conda init powershell
 ```
 
