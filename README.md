@@ -1,4 +1,5 @@
-# GAN_pt_lightning
+# 
+
 Using the [PyTorch Lightning](https://lightning.ai/docs/pytorch/stable/) PyTorch framework to implement the training of Generative Adverserial Networks (GANs) following a series of youtube tutorials [Generative Adversarial Networks (GANs) Playlist](https://www.youtube.com/playlist?list=PLhhyoLH6IjfwIp8bZnzX8QR30TRcHO8Va).
 
 
