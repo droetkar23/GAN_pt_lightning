@@ -8,12 +8,13 @@ Using the [PyTorch Lightning](https://lightning.ai/docs/pytorch/stable/) PyTorch
 The required packages are listed in [environment.yml](environment.yml). \(If no cuda capable GPU is available replace `pytorch-cuda=12.1` with the `cpuonly` package\)
 If you are using a conda like package manager, e.g. [miniforge](https://github.com/conda-forge/miniforge#install), you can create a virtual environment with 
 ```ps
+PS C:\Users\usr\projects\GAN_ptl_lightning> conda activate
 (base) PS C:\Users\usr\projects\GAN_ptl_lightning> mamba create --file environment.yml
 ```
 On Windows use the Miniforge Prompt or initialize your prompt of choice, eg. powershell with
 \(see https://docs.conda.io/projects/conda/en/latest/commands/init.html\).
 ```
-conda init powershell
+(base) PS C:\Users\usr> conda init powershell
 ```
 
 In addition to the packages required to run the training you will want to install tensorboard as a logging interface.
