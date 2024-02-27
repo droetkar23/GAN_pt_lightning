@@ -1,53 +1,112 @@
 from torch import nn
+import torch
 
 
 # optionally create building blocks for the model here and import them in model.py
 
+class ConcatBlock(nn.Module):
+    def __init__(self, concat_dim=1) -> None:
+        super().__init__()
+        self.concat_dim = concat_dim
+    def forward(self, *tensors):
+        return torch.cat(tensors, self.concat_dim)
+
 class ConvBlock(nn.Sequential):
-    def __init__(self, in_ch, out_ch, kernel_size, stride, padding, use_bn=True):
+    def __init__(self,
+                 in_channels,
+                 out_channels,
+                 kernel_size=4,
+                 stride=2,
+                 padding=1,
+                 use_bn=True,
+                 activation=nn.LeakyReLU(0.2),
+                 use_dropout=False,
+                 ):
         modules = [
-            nn.Conv2d(in_ch, out_ch, kernel_size, stride, padding, bias=False),
-            nn.BatchNorm2d(out_ch),
-            nn.LeakyReLU(0.2)
-        ]
-        if not use_bn:
-            del modules[1]
+            nn.Conv2d(in_channels, out_channels, kernel_size, stride, padding, bias=False, padding_mode="reflect")
+            ]
+        if use_bn:
+            modules.append(nn.BatchNorm2d(out_channels))
+        if activation:
+            modules.append(activation)
+        if use_dropout:
+            modules.append(nn.Dropout(0.5))
         super().__init__(*modules)
 
 
 class ConvTransposeBlock(nn.Sequential):
-    def __init__(self, in_ch, out_ch, kernel_size, stride, padding, use_bn=True):
+    def __init__(self,
+                 in_channels,
+                 out_channels,
+                 kernel_size=4,
+                 stride=2,
+                 padding=1,
+                 use_bn=True,
+                 activation=nn.ReLU(),
+                 use_dropout=False,
+                 ):
+        self.out_channels=out_channels
         modules = [
-            nn.ConvTranspose2d(in_ch, out_ch, kernel_size, stride, padding, bias=False),
-            nn.BatchNorm2d(out_ch),
-            nn.ReLU()
-        ]
-        if not use_bn:
-            del modules[1]
+            nn.ConvTranspose2d(in_channels, out_channels, kernel_size, stride, padding, bias=False)
+            ]
+        if use_bn:
+            modules.append(nn.BatchNorm2d(out_channels))
+        if activation:
+            modules.append(activation)
+        if use_dropout:
+            modules.append(nn.Dropout(0.5))
         super().__init__(*modules)
 
 
 class Discriminator(nn.Sequential):
-    def __init__(self, channels_image, features_d, kernel_size=4, stride=2, padding=1):
+    def __init__(self, in_channels=3, features=(64, 128, 256, 512)):
         super().__init__(
-            # input: (N x channels_img x 64 x 64)
-            ConvBlock(channels_image, features_d, kernel_size, stride, padding, use_bn=False),  # 32x32
-            ConvBlock(features_d, features_d*2, kernel_size, stride, padding),                  # 16x16
-            ConvBlock(features_d*2, features_d*4, kernel_size, stride, padding),                # 8x8
-            ConvBlock(features_d*4, features_d*8, kernel_size, stride, padding),                # 4x4
-            nn.Conv2d(features_d*8, 1, kernel_size, stride, padding=0),                           # 1x1
-            nn.Sigmoid()
+            # input: (N x in_channels x 64 x 64)
+            # needs concatenated input (original and desired/generated image)
+            ConvBlock(in_channels*2, features[0], use_bn=False),
+            ConvBlock(features[0], features[1]),
+            ConvBlock(features[1], features[2]),
+            ConvBlock(features[2], features[3], stride=1),
+            ConvBlock(features[3], 1, stride=1, use_bn=False, activation=None),
         )
 
+    def test(self):
+        x = torch.randn((1,3,256,256))
+        y = torch.randn((1,3,256,256))
+        pred = self(torch.cat((x,y), dim=1))
+        print(f"{pred.shape=}")
 
-class Generator(nn.Sequential):
-    def __init__(self, z_dim, channels_image, features_g, kernel_size=4, stride=2, padding=1):
-        super().__init__(
-            # input: (N x z_dim x 1 x 1)
-            ConvTransposeBlock(z_dim, features_g*16, kernel_size, stride=1, padding=0),
-            ConvTransposeBlock(features_g*16, features_g*8, kernel_size, stride, padding),
-            ConvTransposeBlock(features_g*8, features_g*4, kernel_size, stride, padding),
-            ConvTransposeBlock(features_g*4, features_g*2, kernel_size, stride, padding),
-            nn.ConvTranspose2d(features_g*2, channels_image, kernel_size, stride, padding),
-            nn.Tanh()
-        )
+
+class Generator(nn.Module):
+    def __init__(self, img_channels=3, feature_channels=(64,128,256,512,512,512,512)) -> None:
+        super().__init__()
+        # making this list is ugly
+        down_modules = [ConvBlock(img_channels, feature_channels[0],)] +\
+            [ConvBlock(in_ch, out_ch) for in_ch, out_ch in
+             zip(feature_channels[:-1], feature_channels[1:])]
+        self.down_modules = nn.ModuleList(down_modules)
+        
+        self.bottle_neck = ConvBlock(512,512)
+
+        up_modules = [ConvBlock(in_ch, out_ch) for in_ch, out_ch in
+             zip(feature_channels[:-1], feature_channels[1:])] +\
+        []
+
+    def forward(self,x):
+        print(f"{x.shape=}")
+        down_steps = []
+        for dm in self.down_modules:
+            x = dm(x)
+            down_steps.append(x)
+            print(f"{x.shape=}")
+        x = self.bottle_neck(x)
+        print(f"{x.shape=}")
+        for s in down_steps:
+            print(f"{s.shape}")
+        return x
+
+    def test(self):
+        self.train(False)
+        x = torch.randn((1,3,256,256))
+        pred = self(x)
+        print(f"{pred.shape=}")
