@@ -1,0 +1,20 @@
+model_parameters:
+  # img_dim: 784
+  z_dim: 100
+  channels_image: 3
+  features_g: 64
+  features_d: 64
+  learning_rate: 2.0e-4
+
+dataset_parameters:
+  batch_size: 128
+  data_dir: "celeba_dataset/"
+  num_workers: 3
+  resize_to: 64
+  channels_image: 3
+  split: [0.9,0.1,0.0]
+
+trainer_parameters:
+  max_epochs: 10
+  accelerator: gpu
+  devices: [0]
