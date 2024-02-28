@@ -78,32 +78,56 @@ class Discriminator(nn.Sequential):
 
 
 class Generator(nn.Module):
-    def __init__(self, img_channels=3, feature_channels=(64,128,256,512,512,512,512)) -> None:
+
+    def __init__(self,
+                 img_channels=3,
+                 feature_channels=(64,128,256,512,512,512,512),
+                 decoder_dropout_idcs=(0,1)
+                 ) -> None:
         super().__init__()
         # making this list is ugly
-        down_modules = [ConvBlock(img_channels, feature_channels[0],)] +\
-            [ConvBlock(in_ch, out_ch) for in_ch, out_ch in
-             zip(feature_channels[:-1], feature_channels[1:])]
-        self.down_modules = nn.ModuleList(down_modules)
-        
-        self.bottle_neck = ConvBlock(512,512)
+        self.input_conv = ConvBlock(img_channels, feature_channels[0])
 
-        up_modules = [ConvBlock(in_ch, out_ch) for in_ch, out_ch in
-             zip(feature_channels[:-1], feature_channels[1:])] +\
-        []
+        down_modules = [
+            ConvBlock(in_ch, out_ch) for in_ch, out_ch in
+            zip(feature_channels[:-1], feature_channels[1:])
+            ]
+        self.down_modules = nn.ModuleList(down_modules)
+
+        self.bottle_neck = nn.ModuleList([
+            ConvBlock(feature_channels[-1], feature_channels[-1], use_bn=False, activation=nn.ReLU()),
+            ConvTransposeBlock(feature_channels[-1], feature_channels[-1], use_dropout=True)
+        ])
+
+        up_modules = [
+            ConvTransposeBlock(in_ch*2, out_ch, use_dropout=True) if i in decoder_dropout_idcs else
+            ConvTransposeBlock(in_ch*2, out_ch, use_dropout=False) for i, (in_ch, out_ch) in
+            enumerate(zip(feature_channels[::-1], feature_channels[-2::-1]))
+            ]
+        self.up_modules = nn.ModuleList(up_modules)
+
+        self.output_conv = ConvTransposeBlock(feature_channels[0], img_channels, activation=nn.Tanh())
+
 
     def forward(self,x):
-        print(f"{x.shape=}")
-        down_steps = []
+
+        x = self.input_conv(x)
+
+        down_outputs = []
         for dm in self.down_modules:
             x = dm(x)
-            down_steps.append(x)
-            print(f"{x.shape=}")
-        x = self.bottle_neck(x)
-        print(f"{x.shape=}")
-        for s in down_steps:
-            print(f"{s.shape}")
+            down_outputs.append(x)
+
+        for bn in self.bottle_neck:
+            x = bn(x)
+
+        for do, um in zip(down_outputs[::-1], self.up_modules):
+            x = um(torch.cat((x, do), dim=1))
+
+        x = self.output_conv(x)
+
         return x
+
 
     def test(self):
         self.train(False)
