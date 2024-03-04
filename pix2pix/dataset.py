@@ -1,65 +1,99 @@
 import pytorch_lightning as pl
 from pytorch_lightning.utilities.types import EVAL_DATALOADERS, TRAIN_DATALOADERS
-from torchvision import datasets, transforms
-from torch.utils.data import DataLoader, random_split
+from torchvision import datasets, transforms, io
+from torch.utils.data import DataLoader, random_split, Dataset
+import torch
+import glob
+from pathlib import Path
+import requests
+from tqdm.auto import tqdm
+import shutil
+import tarfile
 
 
+# custom dataset
+class ShoeDataset(Dataset):
+    def __init__(self,
+                 root_dir="edges2shoes",
+                 image_dir="edges2shoes/train",
+                 download=False, extract=True,
+                 delete_after_extract=False,
+                 transform=None,
+                 ) -> None:
+        self.root_dir = Path(root_dir)
+        self.download_url = "https://efrosgans.eecs.berkeley.edu/pix2pix/datasets/edges2shoes.tar.gz"
+        self.archive_download_path = self.root_dir / Path(self.download_url.rpartition("/")[-1])
+        self.image_dir = self.root_dir / image_dir
+        self.transform = transform
 
-# # custom dataset
-# class CustomDataset():
-#     # init
+        if not self.root_dir.exists():
+            Path.mkdir(self.root_dir, parents=True)
 
-#     # len
+        if download and self.archive_download_path.exists()==False:
+            # make an HTTP request within a context manager
+            with requests.get(self.download_url, stream=True) as r:
+                # check header to get content length, in bytes
+                total_length = int(r.headers.get("Content-Length"))              
+                # implement progress bar via tqdm
+                with tqdm.wrapattr(r.raw, "read", total=total_length, desc="")as raw:              
+                    # save the output to a file
+                    with open(self.archive_download_path, 'wb')as output:
+                        shutil.copyfileobj(raw, output)
+        
+        if extract and self.archive_download_path.exists():
+            with tarfile.open(self.archive_download_path, "r") as tar:
+                tar.extractall(self.root_dir)
+            if delete_after_extract:
+                Path.unlink(self.archive_download_path)
 
-#     # getitem
+        self.image_files_list = list(self.image_dir.iterdir())
+
+    def __len__(self):
+        return len(self.image_files_list)
+
+    def __getitem__(self, idx):
+        image_pair = io.read_image(str(self.image_files_list[idx]))
+        image_A = image_pair[:,:,:256]
+        image_B = image_pair[:,:,256:]
+        if self.transform is not None:
+            image_A, image_B = self.transform(image_A), self.transform(image_B)
+        return image_A, image_B
+
+    # def __getitems__(self):
+    #     ...
 
 
 
 class plDataModule(pl.LightningDataModule):
-    def __init__(self, data_dir, batch_size, split=[0.8, 0.2, 0.0], num_workers=0, resize_to=64, channels_image=1) -> None:
+    def __init__(self, data_dir, batch_size, num_workers=0, channels_image=3) -> None:
         super().__init__()
         self.data_dir = data_dir
         self.batch_size = batch_size
         self.num_workers = num_workers
-        self.split = split
 
         self.transforms = transforms.Compose(
             [
-                transforms.Resize(resize_to),
-                transforms.CenterCrop(resize_to),
-                transforms.ToTensor(),
-                transforms.Normalize(
-                    [0.5 for _ in range(channels_image)], [0.5 for _ in range(channels_image)]
-                ),
+                transforms.ConvertImageDtype(torch.float32),
+                # transforms.Normalize(
+                #     [0.5 for _ in range(channels_image)], [0.5 for _ in range(channels_image)]
+                # ),
             ]
         )
     
     def prepare_data(self) -> None:
-        # eg download
-        # datasets.MNIST(self.data_dir, train=True, download=True)
-        # datasets.MNIST(self.data_dir, train=False, download=True)
-        datasets.CelebA(root=self.data_dir, download=True)
-        
+        ShoeDataset(root_dir="edges2shoes", download=True, extract=False)
+
     def setup(self, stage: str) -> None:
-        # setup the dataset, train/val split, test dataset, transforms
-        # train_val_ds = datasets.MNIST(
-        #     self.data_dir,
-        #     train=True,
-        #     download=False,
-        #     transform=self.transforms
-        # )
-        
-        # self.train_ds, self.val_ds = random_split(train_val_ds, [50000, 10000])
-
-        # self.test_ds = datasets.MNIST(
-        #     self.data_dir,
-        #     train=False,
-        #     download=False,
-        #     transform=self.transforms
-        # )
-
-        ds = datasets.CelebA(root=self.data_dir, transform=self.transforms)
-        self.train_ds, self.val_ds, self.test_ds = random_split(ds, self.split)
+        self.train_ds = ShoeDataset(
+            image_dir="images/edge2shoes/train",
+            extract=False,
+            transform=self.transforms,
+            )        
+        self.val_ds = ShoeDataset(
+            image_dir="images/edge2shoes/val",
+            extract=False,
+            transform=self.transforms,
+            )
 
     def train_dataloader(self) -> TRAIN_DATALOADERS:
         return DataLoader(
@@ -79,11 +113,11 @@ class plDataModule(pl.LightningDataModule):
             shuffle=False
         )
     
-    def test_dataloader(self) -> EVAL_DATALOADERS:
-        return DataLoader(
-            self.test_ds,
-            batch_size=self.batch_size,
-            num_workers=self.num_workers,
-            persistent_workers=True,
-            shuffle=False
-        )
+    # def test_dataloader(self) -> EVAL_DATALOADERS:
+    #     return DataLoader(
+    #         self.test_ds,
+    #         batch_size=self.batch_size,
+    #         num_workers=self.num_workers,
+    #         persistent_workers=True,
+    #         shuffle=False
+    #     )
