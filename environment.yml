@@ -14,4 +14,5 @@ dependencies:
   - pytorch-lightning
   - tensorboard
   - tensorboardX
+  - requests
 prefix: C:\Users\Oskar\miniforge3\envs\GAN_ptl
