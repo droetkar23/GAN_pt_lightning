@@ -59,7 +59,7 @@ class ConvTransposeBlock(nn.Sequential):
 
 
 class Discriminator(nn.Sequential):
-    def __init__(self, in_channels=3, features=(64, 128, 256, 512)):
+    def __init__(self, in_channels=3, features=(64, 128, 256, 512), **kwargs):
         super().__init__(
             # input: (N x in_channels x 64 x 64)
             # needs concatenated input (original and desired/generated image)
@@ -82,7 +82,8 @@ class Generator(nn.Module):
     def __init__(self,
                  img_channels=3,
                  feature_channels=(64,128,256,512,512,512,512),
-                 decoder_dropout_idcs=(0,1)
+                 decoder_dropout_idcs=(0,1),
+                 **kwargs
                  ) -> None:
         super().__init__()
         # making this list is ugly
