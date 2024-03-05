@@ -95,7 +95,7 @@ class Pix2PixShoes(pl.LightningModule):
         # print(f"{comparison_samples[0].shape=}")
         # print(f"{comparison_samples[0].dtype=}")
         # print(f"{comparison_samples[0]=}")
-        grid = torchvision.utils.make_grid(comparison_samples, nrow=2)
+        grid = torchvision.utils.make_grid(comparison_samples, nrow=8)
         self.logger.experiment.add_image("generated_images", grid, self.current_epoch)
         
         
