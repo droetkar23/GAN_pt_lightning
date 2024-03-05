@@ -90,11 +90,8 @@ class Pix2PixShoes(pl.LightningModule):
         # log sampled images
         image_A_samples, image_B_samples = self.image_A_B_samples
         image_A_to_B_samples = self(image_A_samples)
-        # dim=2 corresponds to the x-axis of the images, so the comparison is side to side TODO which dim to cat on???
+        # A, B, A to B stacked on top
         comparison_samples = torch.cat((image_A_samples, image_B_samples, image_A_to_B_samples), dim=2)
-        # print(f"{comparison_samples[0].shape=}")
-        # print(f"{comparison_samples[0].dtype=}")
-        # print(f"{comparison_samples[0]=}")
         grid = torchvision.utils.make_grid(comparison_samples, nrow=8)
         self.logger.experiment.add_image("generated_images", grid, self.current_epoch)
         
