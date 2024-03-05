@@ -10,51 +10,36 @@ from modules import Discriminator, Generator
 # fixed_noise = torch.randn((batch_size, z_dim)).to(device)
 
 class DCGanCelebA(pl.LightningModule):
-    def __init__(self, z_dim, channels_image, features_g, features_d, learning_rate) -> None:
+    def __init__(self, img_channels, img_train_dim=3, learning_rate=1e-5) -> None:
         super().__init__()
         self.save_hyperparameters()
         self.lr = learning_rate
-        self.z_dim = z_dim
-        self.gen = Generator(z_dim=z_dim, channels_image=channels_image, features_g=features_g)
-        self.disc = Discriminator(channels_image=channels_image, features_d=features_d)
+        self.gen = Generator()
+        self.disc = Discriminator()
         self.criterion = nn.BCELoss()
 
-        self.automatic_optimization = False
-
-        # need a fixed sample noise for logging
-        self.fixed_noise = torch.randn(32, z_dim, 1, 1)
+        # self.automatic_optimization = False
 
         # defining self.example_input_array will add the
         # computational graph to the logger automatically
-        self.example_input_array = torch.zeros(1, z_dim, 1, 1)
+        self.example_input_array = torch.zeros(1, img_channels, img_train_dim, img_train_dim)
         # print(f"{self.device=}")
         # print(f"{self.disc.device=}")
         # print(f"{self.gen.device=}")
-        
+
+    def forward(self, x) -> Any:
+        return self.gen(x)
+
+    def configure_optimizers(self) -> Any:
+        opt_g = optim.Adam(self.gen.parameters(), lr=self.lr, betas=(0.5, 0.999))
+        opt_d = optim.Adam(self.disc.parameters(), lr=self.lr, betas=(0.5, 0.999))
+        return opt_g, opt_d
 
     def custom_weight_init(self):
     # Initializes weights according to the DCGAN paper
         for m in self.modules():
             if isinstance(m, (nn.Conv2d, nn.ConvTranspose2d, nn.BatchNorm2d)):
                 nn.init.normal_(m.weight.data, 0.0, 0.02)
-
-    def test(self):
-        N, in_channels, H, W = 8, self.hparams.channels_image, 64, 64
-        noise_dim = self.hparams.z_dim
-        x = torch.randn((N, in_channels, H, W), device=self.device)
-        print(f"{self.device=}")
-        print(f"{x.device=}")
-        # disc = self.disc(in_channels, 8)
-        assert self.disc(x).shape == (N, 1, 1, 1), "Discriminator test failed"
-        # gen = self.gen(noise_dim, in_channels, 8)
-        z = torch.randn((N, noise_dim, 1, 1), device=self.device)
-        assert self.gen(z).shape == (N, in_channels, H, W), "Generator test failed"
-        print("Success, tests passed!")
-
-
-
-    def forward(self, x) -> Any:
-        return self.gen(x)
 
 
     def training_step(self, batch) -> STEP_OUTPUT:
@@ -114,8 +99,16 @@ class DCGanCelebA(pl.LightningModule):
         # implement test step
         pass
 
-    def configure_optimizers(self) -> Any:
-        opt_g = optim.Adam(self.gen.parameters(), lr=self.lr, betas=(0.5, 0.999))
-        opt_d = optim.Adam(self.disc.parameters(), lr=self.lr, betas=(0.5, 0.999))
-        return opt_g, opt_d
     
+    def test(self):
+        N, in_channels, H, W = 8, self.hparams.channels_image, 64, 64
+        noise_dim = self.hparams.z_dim
+        x = torch.randn((N, in_channels, H, W), device=self.device)
+        print(f"{self.device=}")
+        print(f"{x.device=}")
+        # disc = self.disc(in_channels, 8)
+        assert self.disc(x).shape == (N, 1, 1, 1), "Discriminator test failed"
+        # gen = self.gen(noise_dim, in_channels, 8)
+        z = torch.randn((N, noise_dim, 1, 1), device=self.device)
+        assert self.gen(z).shape == (N, in_channels, H, W), "Generator test failed"
+        print("Success, tests passed!")
