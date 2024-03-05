@@ -14,8 +14,8 @@ import tarfile
 # custom dataset
 class ShoeDataset(Dataset):
     def __init__(self,
-                 root_dir="edges2shoes",
-                 image_dir="edges2shoes/train",
+                 root_dir="datasets/edges2shoes",
+                 image_dir="images/edges2shoes/train",
                  download=False, extract=True,
                  delete_after_extract=False,
                  transform=None,
@@ -65,11 +65,13 @@ class ShoeDataset(Dataset):
 
 
 class plDataModule(pl.LightningDataModule):
-    def __init__(self, data_dir, batch_size, num_workers=0, channels_image=3) -> None:
+    def __init__(self, data_dir, batch_size, num_workers=0, train_ds_size=1.0, val_ds_size=1.0) -> None:
         super().__init__()
         self.data_dir = data_dir
         self.batch_size = batch_size
         self.num_workers = num_workers
+        self.train_ds_size = train_ds_size
+        self.val_ds_size = val_ds_size
 
         self.transforms = transforms.Compose(
             [
@@ -81,19 +83,27 @@ class plDataModule(pl.LightningDataModule):
         )
     
     def prepare_data(self) -> None:
-        ShoeDataset(root_dir="edges2shoes", download=True, extract=False)
+        ShoeDataset(root_dir="datasets/edges2shoes", download=True, extract=False)
 
     def setup(self, stage: str) -> None:
-        self.train_ds = ShoeDataset(
-            image_dir="images/edge2shoes/train",
+
+        self.train_ds = random_split(
+            ShoeDataset(
+            image_dir="images/edges2shoes/train",
             extract=False,
             transform=self.transforms,
-            )        
-        self.val_ds = ShoeDataset(
-            image_dir="images/edge2shoes/val",
+            ),
+            [self.train_ds_size, 1-self.train_ds_size]
+        )[0]
+
+        self.val_ds = random_split(
+            ShoeDataset(
+            image_dir="images/edges2shoes/val",
             extract=False,
             transform=self.transforms,
-            )
+            ),
+            [self.val_ds_size, 1-self.val_ds_size]
+        )[0]
 
     def train_dataloader(self) -> TRAIN_DATALOADERS:
         return DataLoader(
