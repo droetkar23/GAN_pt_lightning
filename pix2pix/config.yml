@@ -6,10 +6,10 @@ dataset_parameters:
   batch_size: 16
   data_dir: ""
   num_workers: 3
-  train_ds_size: 0.1
-  val_ds_size: 0.1
+  train_ds_size: 0.3
+  val_ds_size: 0.3
 
 trainer_parameters:
-  max_epochs: 10
+  max_epochs: 20
   accelerator: gpu
   devices: [0]
